@@ -1,0 +1,2082 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
+    <title>Mapa de sitios de interés - Shalom</title>
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.css"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.Default.css"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/gh/ljagis/leaflet-measure@2.1.7/dist/leaflet-measure.min.css"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css"
+    />
+    <style>
+      :root {
+        --bg: rgba(255, 255, 255, 0.94);
+        --green: #314437;
+        --gold: #9a7a15;
+        --text: #1f2a24;
+        --project-card-width: 56px;
+        --project-card-min-height: 54px;
+        --project-logo-width: 42px;
+        --project-logo-max-height: 28px;
+        --project-text-size: 7.5px;
+        --project-name-display: block;
+      }
+      html,
+      body,
+      #map {
+        height: 100%;
+        width: 100%;
+        margin: 0;
+        padding: 0;
+        font-family: Arial, Helvetica, sans-serif;
+      }
+      #map {
+        background: #e7eadf;
+      }
+      .title-pill {
+        position: fixed;
+        top: 14px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 1000;
+        background: var(--bg);
+        border: 1px solid rgba(0, 0, 0, 0.12);
+        border-radius: 999px;
+        padding: 10px 20px;
+        box-shadow: 0 5px 18px rgba(0, 0, 0, 0.16);
+        font-weight: 700;
+        color: var(--green);
+        letter-spacing: 0.2px;
+      }
+      .side-panel {
+        position: fixed;
+        top: 72px;
+        right: 18px;
+        bottom: 18px;
+        width: 360px;
+        z-index: 1000;
+        background: rgba(255, 255, 255, 0.96);
+        border: 1px solid rgba(0, 0, 0, 0.12);
+        border-radius: 16px;
+        box-shadow: 0 8px 28px rgba(0, 0, 0, 0.22);
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+      }
+      .panel-header {
+        padding: 16px 16px 10px;
+        background: linear-gradient(135deg, #314437, #4e654f);
+        color: white;
+      }
+      .panel-header h2 {
+        margin: 0;
+        font-size: 18px;
+        line-height: 1.2;
+      }
+      .panel-header p {
+        margin: 6px 0 0;
+        font-size: 12px;
+        opacity: 0.9;
+      }
+      .filters {
+        padding: 10px 14px;
+        border-bottom: 1px solid #e3e3e3;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 6px;
+      }
+      .filter {
+        font-size: 12px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        cursor: pointer;
+        user-select: none;
+      }
+      .dot {
+        width: 10px;
+        height: 10px;
+        display: inline-block;
+        border-radius: 50%;
+      }
+      .poi-list {
+        overflow: auto;
+        padding: 8px 12px 12px;
+      }
+      .poi-item {
+        border-bottom: 1px solid #efefef;
+        padding: 8px 2px;
+        font-size: 12px;
+        cursor: pointer;
+      }
+      .poi-item:hover {
+        background: #f7f7f2;
+      }
+      .poi-item strong {
+        color: #27382d;
+        font-size: 13px;
+      }
+      .poi-meta {
+        color: #616161;
+        margin-top: 2px;
+        line-height: 1.35;
+      }
+      .note {
+        padding: 10px 14px;
+        font-size: 11px;
+        color: #555;
+        background: #faf7eb;
+        border-top: 1px solid #e4dcc4;
+      }
+      .custom-marker {
+        width: 28px;
+        height: 28px;
+        border-radius: 50% 50% 50% 0;
+        transform: rotate(-45deg);
+        border: 2px solid white;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.38);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .custom-marker span {
+        transform: rotate(45deg);
+        color: white;
+        font-weight: 700;
+        font-size: 12px;
+        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
+      }
+      .cat-Restaurantes {
+        background: #f58220;
+      }
+      .cat-Comercio {
+        background: #2f80ed;
+      }
+      .cat-Deporte {
+        background: #67a844;
+      }
+      .cat-Naturaleza {
+        background: #17a7a7;
+      }
+      .cat-Gastrobares {
+        background: #8a4cc2;
+      }
+      .cat-Educacion {
+        background: #d8a91a;
+      }
+      .cat-Salud {
+        background: #d64545;
+      }
+      .project-marker {
+        position: relative;
+        box-sizing: border-box;
+        width: var(--project-card-width);
+        min-height: var(--project-card-min-height);
+        background: white;
+        border: 1.5px solid #314437;
+        border-radius: 10px;
+        box-shadow: 0 3px 10px rgba(0, 0, 0, 0.3);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 4px 5px;
+      }
+      .project-marker::after {
+        content: "";
+        position: absolute;
+        left: 50%;
+        bottom: -9px;
+        transform: translateX(-50%);
+        width: 0;
+        height: 0;
+        border-left: 7px solid transparent;
+        border-right: 7px solid transparent;
+        border-top: 9px solid #314437;
+      }
+      .project-marker img {
+        width: var(--project-logo-width);
+        height: auto;
+        max-height: var(--project-logo-max-height);
+        object-fit: contain;
+        display: block;
+      }
+      .project-marker .pname {
+        font-size: var(--project-text-size);
+        color: #314437;
+        font-weight: 700;
+        text-align: center;
+        margin-top: 2px;
+        line-height: 1.05;
+        display: var(--project-name-display);
+      }
+
+      .project-lot-label {
+        background: rgba(255, 255, 255, 0.96);
+        border: 2px solid #b400d6;
+        color: #5a2b73;
+        font-weight: 700;
+        font-size: 13px;
+        border-radius: 10px;
+        padding: 5px 9px;
+        box-shadow: 0 3px 8px rgba(0, 0, 0, 0.18);
+      }
+      .project-lot-label::before {
+        display: none;
+      }
+
+      .tool-panel {
+        position: fixed;
+        top: 72px;
+        left: 64px;
+        width: 318px;
+        z-index: 1001;
+        background: rgba(255, 255, 255, 0.97);
+        border: 1px solid rgba(0, 0, 0, 0.14);
+        border-radius: 16px;
+        box-shadow: 0 8px 28px rgba(0, 0, 0, 0.22);
+        overflow: hidden;
+        color: var(--text);
+      }
+      .tool-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 11px 13px;
+        background: linear-gradient(135deg, #314437, #4e654f);
+        color: white;
+        font-size: 14px;
+      }
+      .tool-head button {
+        border: 0;
+        border-radius: 9px;
+        padding: 4px 9px;
+        background: rgba(255, 255, 255, 0.18);
+        color: white;
+        font-weight: 800;
+        cursor: pointer;
+      }
+      .tool-body {
+        padding: 12px 13px 13px;
+        max-height: calc(100vh - 110px);
+        overflow: auto;
+      }
+      .tool-panel.collapsed .tool-body {
+        display: none;
+      }
+      .tool-section {
+        border-bottom: 1px solid #e9e4d4;
+        padding-bottom: 12px;
+        margin-bottom: 12px;
+      }
+      .tool-section:last-child {
+        border-bottom: 0;
+        padding-bottom: 0;
+        margin-bottom: 0;
+      }
+      .tool-section h3 {
+        margin: 0 0 9px;
+        font-size: 13px;
+        color: #314437;
+      }
+      .tool-row {
+        margin: 8px 0;
+        font-size: 12px;
+      }
+      .tool-row label {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        margin-bottom: 5px;
+        font-weight: 700;
+        color: #2f3b33;
+      }
+      .tool-row input[type="range"] {
+        width: 100%;
+      }
+      .tool-row input[type="color"] {
+        width: 48px;
+        height: 30px;
+        border: 0;
+        padding: 0;
+        background: transparent;
+        cursor: pointer;
+      }
+      .tool-check {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        font-size: 12px;
+        margin: 8px 0;
+      }
+      .tool-actions {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 6px;
+        margin-top: 8px;
+      }
+      .tool-actions button,
+      .tool-full-btn {
+        border: 0;
+        border-radius: 10px;
+        padding: 8px 9px;
+        background: #314437;
+        color: white;
+        font-weight: 700;
+        font-size: 12px;
+        cursor: pointer;
+      }
+      .tool-actions button.secondary,
+      .tool-full-btn.secondary {
+        background: #9a7a15;
+      }
+      .tool-actions button.light,
+      .tool-full-btn.light {
+        background: #eef1eb;
+        color: #314437;
+        border: 1px solid #d9dfd5;
+      }
+      .tool-actions button:disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
+      }
+      .tool-full-btn {
+        display: block;
+        width: 100%;
+        margin-top: 7px;
+      }
+      .edit-status {
+        margin: 8px 0 0;
+        font-size: 11px;
+        color: #5f5f5f;
+        line-height: 1.35;
+      }
+      .coords-output {
+        width: 100%;
+        height: 86px;
+        box-sizing: border-box;
+        resize: vertical;
+        margin-top: 8px;
+        font-family: Consolas, monospace;
+        font-size: 11px;
+        border: 1px solid #ddd;
+        border-radius: 10px;
+        padding: 8px;
+        background: #fbfbf8;
+      }
+      .tool-row select {
+        width: 100%;
+        box-sizing: border-box;
+        border: 1px solid #d9dfd5;
+        border-radius: 10px;
+        padding: 8px 9px;
+        background: #fbfbf8;
+        color: #1f2a24;
+        font-size: 12px;
+      }
+      .pin-status {
+        margin: 8px 0 0;
+        font-size: 11px;
+        color: #5f5f5f;
+        line-height: 1.35;
+      }
+      .leaflet-draw-toolbar {
+        border-radius: 8px;
+        overflow: hidden;
+      }
+
+      .popup {
+        min-width: 250px;
+        font-size: 13px;
+        color: #2b2b2b;
+      }
+      .popup h3 {
+        margin: 0 0 8px;
+        font-size: 17px;
+        color: #314437;
+      }
+      .popup .badge {
+        display: inline-block;
+        padding: 3px 8px;
+        border-radius: 999px;
+        color: white;
+        font-weight: 700;
+        font-size: 11px;
+        margin-bottom: 8px;
+      }
+      .popup-row {
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+        border-top: 1px solid #eee;
+        padding: 6px 0;
+      }
+      .popup-row b {
+        color: #314437;
+      }
+      .popup small {
+        color: #666;
+      }
+      .leaflet-control-layers {
+        border-radius: 12px;
+        overflow: hidden;
+      }
+      @media (max-width: 900px) {
+        .side-panel {
+          display: none;
+        }
+        .tool-panel {
+          left: 12px;
+          right: 12px;
+          width: auto;
+          top: 64px;
+        }
+        .title-pill {
+          width: calc(100% - 36px);
+          text-align: center;
+          font-size: 13px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="map"></div>
+    <div class="title-pill">
+      Mapa de sitios de interés · Shalom Residential Golf Club
+    </div>
+    <div class="side-panel">
+      <div class="panel-header">
+        <h2>Sitios de interés cercanos</h2>
+        <p>Distancias y tiempos aproximados desde Club Shalom / proyecto.</p>
+      </div>
+      <div class="filters" id="filters"></div>
+      <div class="poi-list" id="poiList"></div>
+      <div class="note">
+        <b>Nota:</b> valores preliminares para visualización comercial. Validar
+        rutas exactas con Google Maps/Waze antes de publicación final.
+      </div>
+    </div>
+
+    <div class="tool-panel" id="toolPanel">
+      <div class="tool-head">
+        <strong>Herramientas de ajuste</strong>
+        <button type="button" id="toggleTools" title="Minimizar panel">
+          −
+        </button>
+      </div>
+      <div class="tool-body">
+        <div class="tool-section">
+          <h3>Pin / logo del proyecto</h3>
+          <div class="tool-row">
+            <label for="logoCardSize"
+              >Tamaño del pin <span id="logoCardValue">56 px</span></label
+            >
+            <input
+              id="logoCardSize"
+              type="range"
+              min="36"
+              max="130"
+              step="1"
+              value="56"
+            />
+          </div>
+          <div class="tool-row">
+            <label for="logoImageSize"
+              >Tamaño del logo <span id="logoImageValue">42 px</span></label
+            >
+            <input
+              id="logoImageSize"
+              type="range"
+              min="20"
+              max="110"
+              step="1"
+              value="42"
+            />
+          </div>
+          <div class="tool-row">
+            <label for="logoTextSize"
+              >Tamaño texto <span id="logoTextValue">8 px</span></label
+            >
+            <input
+              id="logoTextSize"
+              type="range"
+              min="0"
+              max="15"
+              step="0.5"
+              value="7.5"
+            />
+          </div>
+          <label class="tool-check"
+            ><input type="checkbox" id="showProjectName" checked /> Mostrar
+            nombre debajo del logo</label
+          >
+        </div>
+        <div class="tool-section">
+          <h3>Demarcación del lote</h3>
+          <div class="tool-row">
+            <label for="lotColor"
+              >Color del contorno
+              <input id="lotColor" type="color" value="#d100ff"
+            /></label>
+          </div>
+          <div class="tool-row">
+            <label for="lotWeight"
+              >Grosor del borde <span id="lotWeightValue">3 px</span></label
+            >
+            <input
+              id="lotWeight"
+              type="range"
+              min="1"
+              max="10"
+              step="1"
+              value="3"
+            />
+          </div>
+          <div class="tool-row">
+            <label for="lotOpacity"
+              >Opacidad del relleno <span id="lotOpacityValue">12%</span></label
+            >
+            <input
+              id="lotOpacity"
+              type="range"
+              min="0"
+              max="60"
+              step="1"
+              value="12"
+            />
+          </div>
+          <div class="tool-actions">
+            <button type="button" id="editLotBtn">Editar vértices</button>
+            <button type="button" id="finishEditBtn" class="secondary" disabled>
+              Finalizar edición
+            </button>
+          </div>
+          <div class="tool-actions">
+            <button type="button" id="resetLotBtn" class="light">
+              Restaurar lote
+            </button>
+            <button type="button" id="copyLotBtn" class="light">
+              Copiar coordenadas
+            </button>
+          </div>
+          <button type="button" id="saveAdjustmentsBtn" class="tool-full-btn">
+            Guardar ajustes en este navegador
+          </button>
+          <p class="edit-status" id="editStatus">
+            Activa “Editar vértices” para mover los puntos del lote. También
+            puedes usar el ícono de lápiz de Leaflet en el mapa.
+          </p>
+          <textarea
+            id="coordsOutput"
+            class="coords-output"
+            readonly
+            placeholder="Aquí aparecerán las coordenadas actualizadas del lote..."
+          ></textarea>
+        </div>
+        <div class="tool-section">
+          <h3>Pines de sitios</h3>
+          <div class="tool-row">
+            <label for="pinSelect">Sitio a ajustar</label>
+            <select id="pinSelect"></select>
+          </div>
+          <div class="tool-actions">
+            <button type="button" id="focusPinBtn" class="light">
+              Ir al pin
+            </button>
+            <button type="button" id="editPinBtn">Mover pin</button>
+          </div>
+          <div class="tool-actions">
+            <button
+              type="button"
+              id="finishPinEditBtn"
+              class="secondary"
+              disabled
+            >
+              Finalizar
+            </button>
+            <button type="button" id="resetPinBtn" class="light">
+              Restaurar pin
+            </button>
+          </div>
+          <div class="tool-actions">
+            <button type="button" id="resetAllPinsBtn" class="light">
+              Restaurar todos
+            </button>
+            <button type="button" id="copyPinsBtn" class="light">
+              Copiar pines
+            </button>
+          </div>
+          <p class="pin-status" id="pinStatus">
+            Selecciona un sitio y presiona “Mover pin”. Luego arrastra el
+            marcador sobre el mapa.
+          </p>
+          <textarea
+            id="pinsOutput"
+            class="coords-output"
+            readonly
+            placeholder="Aquí aparecerán las coordenadas actualizadas de los pines..."
+          ></textarea>
+        </div>
+      </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/leaflet.markercluster.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/ljagis/leaflet-measure@2.1.7/dist/leaflet-measure.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
+    <script>
+      // Logo tomado del repositorio público del proyecto.
+      // En producción dentro del repo, puedes usar: ../branding/LabelProyecto_512x512.png
+      const projectLogo =
+        "https://raw.githubusercontent.com/Workobot/CBC0030-Shalom_PUBLIC/master/CBC0030-Shalom/assets/branding/LabelProyecto_512x512.png";
+      const STORAGE_KEY = "shalomMapEditorSettings";
+      const defaultEditorSettings = {
+        logoCardSize: 56,
+        logoImageSize: 42,
+        logoTextSize: 7.5,
+        showProjectName: true,
+        lotColor: "#d100ff",
+        lotWeight: 3,
+        lotOpacity: 12,
+        loteCoords: null,
+        pinCoords: null,
+      };
+      let editorSettings = { ...defaultEditorSettings };
+      try {
+        const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null");
+        if (saved && typeof saved === "object")
+          editorSettings = { ...editorSettings, ...saved };
+      } catch (err) {
+        console.warn("No fue posible cargar ajustes guardados:", err);
+      }
+      let projectMarker = null;
+
+      function setCssVar(name, value) {
+        document.documentElement.style.setProperty(name, value);
+      }
+      function projectIconMetrics() {
+        const card = Number(editorSettings.logoCardSize) || 56;
+        const logo = Number(editorSettings.logoImageSize) || 42;
+        const text = Number(editorSettings.logoTextSize) || 7.5;
+        const showText = !!editorSettings.showProjectName && text > 0;
+
+        // El tamaño del logo ahora modifica el tamaño real del marcador.
+        // Si el logo es más grande que el pin base, el contenedor crece para que no se recorte.
+        const effectiveWidth = Math.max(card, logo + 14);
+        const logoHeight = Math.max(18, Math.round(logo * 0.68));
+        const textHeight = showText ? Math.ceil(text * 2.35) + 4 : 0;
+        const minHeight = Math.max(
+          Math.round(card * 0.96),
+          logoHeight + textHeight + 10,
+        );
+        const totalWidth = effectiveWidth + 10;
+        const totalHeight = minHeight + 18;
+        return {
+          card,
+          logo,
+          text,
+          showText,
+          effectiveWidth,
+          logoHeight,
+          minHeight,
+          totalWidth,
+          totalHeight,
+        };
+      }
+      function buildProjectIcon() {
+        const m = projectIconMetrics();
+        return L.divIcon({
+          className: "",
+          html: `<div class="project-marker" style="width:${m.effectiveWidth}px;min-height:${m.minHeight}px;">
+      <img src="${projectLogo}" alt="Shalom" style="width:${m.logo}px;max-height:${m.logoHeight}px;">
+      <div class="pname" style="font-size:${m.text}px;display:${m.showText ? "block" : "none"};">Proyecto<br>Club Shalom</div>
+    </div>`,
+          iconSize: [m.totalWidth, m.totalHeight],
+          iconAnchor: [m.totalWidth / 2, m.totalHeight],
+          popupAnchor: [0, -m.totalHeight],
+        });
+      }
+      function applyProjectLogoSettings() {
+        const m = projectIconMetrics();
+        setCssVar("--project-card-width", `${m.effectiveWidth}px`);
+        setCssVar("--project-card-min-height", `${m.minHeight}px`);
+        setCssVar("--project-logo-width", `${m.logo}px`);
+        setCssVar("--project-logo-max-height", `${m.logoHeight}px`);
+        setCssVar("--project-text-size", `${m.text}px`);
+        setCssVar("--project-name-display", m.showText ? "block" : "none");
+        if (projectMarker) {
+          projectMarker.setIcon(buildProjectIcon());
+          projectMarker.update();
+        }
+        if (window.__lotReady && typeof updateCoordsOutput === "function")
+          updateCoordsOutput();
+      }
+      applyProjectLogoSettings();
+      const points = [
+        {
+          name: "Club Shalom",
+          category: "Referencia",
+          status: "verificada",
+          desc: "Punto base de referencia del mapa.",
+          lat: 3.3348092,
+          lng: -76.5477224,
+          distance: "0 km",
+          time: "Punto de referencia",
+          number: 0,
+          displayCategory: "Referencia",
+        },
+        {
+          name: "Anttonina's Pance",
+          category: "Restaurantes",
+          status: "aproximada",
+          desc: "Zona Calle 16A / Carrera 123.",
+          lat: 3.3377,
+          lng: -76.533,
+          distance: "1.5 - 2.5 km",
+          time: "4 - 7 min",
+          number: 0,
+          displayCategory: "Restaurantes",
+        },
+        {
+          name: "Café Valparaíso Pance",
+          category: "Restaurantes",
+          status: "verificada",
+          desc: "Mall La María, Cra. 125 #23A-58.",
+          lat: 3.3386579,
+          lng: -76.5258248,
+          distance: "1.5 - 2.5 km",
+          time: "4 - 7 min",
+          number: 1,
+          displayCategory: "Restaurantes",
+        },
+        {
+          name: "La Boquería",
+          category: "Restaurantes",
+          status: "aproximada",
+          desc: "Sector Pance / Calle 18.",
+          lat: 3.337,
+          lng: -76.5306,
+          distance: "2 - 3 km",
+          time: "5 - 8 min",
+          number: 2,
+          displayCategory: "Restaurantes",
+        },
+        {
+          name: "Patada de la Mula",
+          category: "Restaurantes",
+          status: "aproximada",
+          desc: "Sector Av. La María / Pance.",
+          lat: 3.3387764,
+          lng: -76.536,
+          distance: "2 - 3.5 km",
+          time: "5 - 9 min",
+          number: 3,
+          displayCategory: "Restaurantes",
+        },
+        {
+          name: "Celeste Restaurante",
+          category: "Restaurantes",
+          status: "aproximada",
+          desc: "Sector Puerto 125 / Pance.",
+          lat: 3.3384,
+          lng: -76.5346,
+          distance: "2 - 3.5 km",
+          time: "5 - 9 min",
+          number: 4,
+          displayCategory: "Restaurantes",
+        },
+        {
+          name: "Hoi An Cocina Vietnamita",
+          category: "Restaurantes",
+          status: "aproximada",
+          desc: "Nodo Puerto 125 / Pance.",
+          lat: 3.33825,
+          lng: -76.5355,
+          distance: "2 - 3.5 km",
+          time: "5 - 9 min",
+          number: 5,
+          displayCategory: "Restaurantes",
+        },
+        {
+          name: "La Romanezca Café Restaurante",
+          category: "Restaurantes",
+          status: "aproximada",
+          desc: "Sector Puerto 125 / Pance.",
+          lat: 3.3379,
+          lng: -76.535,
+          distance: "2 - 3.5 km",
+          time: "5 - 9 min",
+          number: 6,
+          displayCategory: "Restaurantes",
+        },
+        {
+          name: "Mar Peruano - Sede Pance",
+          category: "Restaurantes",
+          status: "aproximada",
+          desc: "Nodo Puerto 125 / Pance.",
+          lat: 3.33845,
+          lng: -76.5353,
+          distance: "2 - 3.5 km",
+          time: "5 - 9 min",
+          number: 7,
+          displayCategory: "Restaurantes",
+        },
+        {
+          name: "El Gringo Pance",
+          category: "Restaurantes",
+          status: "aproximada",
+          desc: "Sector Av. La María / Pance.",
+          lat: 3.3386,
+          lng: -76.5362,
+          distance: "2 - 4 km",
+          time: "6 - 10 min",
+          number: 8,
+          displayCategory: "Restaurantes",
+        },
+        {
+          name: "La Corte de la Carne - Puerto 125",
+          category: "Restaurantes",
+          status: "aproximada",
+          desc: "Dentro o junto a Puerto 125.",
+          lat: 3.3381,
+          lng: -76.535,
+          distance: "2 - 3 km",
+          time: "5 - 8 min",
+          number: 9,
+          displayCategory: "Restaurantes",
+        },
+        {
+          name: "Aldea Asiática - Puerto 125",
+          category: "Restaurantes",
+          status: "aproximada",
+          desc: "Dentro o junto a Puerto 125.",
+          lat: 3.338,
+          lng: -76.5353,
+          distance: "2 - 3 km",
+          time: "5 - 8 min",
+          number: 10,
+          displayCategory: "Restaurantes",
+        },
+        {
+          name: "Piazza by Storia D’Amore",
+          category: "Restaurantes",
+          status: "aproximada",
+          desc: "Nodo Puerto 125 / Pance.",
+          lat: 3.338,
+          lng: -76.5358,
+          distance: "2.5 - 4 km",
+          time: "6 - 10 min",
+          number: 11,
+          displayCategory: "Restaurantes",
+        },
+        {
+          name: "Café Pintado",
+          category: "Restaurantes",
+          status: "aproximada",
+          desc: "Sector Pance.",
+          lat: 3.3379,
+          lng: -76.532,
+          distance: "2 - 3.5 km",
+          time: "5 - 9 min",
+          number: 12,
+          displayCategory: "Restaurantes",
+        },
+        {
+          name: "Cuuc Restaurante",
+          category: "Restaurantes",
+          status: "aproximada",
+          desc: "Sector Pance.",
+          lat: 3.3387,
+          lng: -76.5328,
+          distance: "2 - 3.5 km",
+          time: "5 - 9 min",
+          number: 13,
+          displayCategory: "Restaurantes",
+        },
+        {
+          name: "Dos Santos Cantina",
+          category: "Restaurantes / Gastrobares",
+          status: "aproximada",
+          desc: "Aparece en restaurantes y gastrobares; marcador consolidado.",
+          lat: 3.3383,
+          lng: -76.5359,
+          distance: "2 - 3.5 km",
+          time: "5 - 9 min",
+          number: 14,
+          displayCategory: "Restaurantes",
+        },
+        {
+          name: "Puerto 125 Zona Comercial",
+          category: "Comercio",
+          status: "verificada",
+          desc: "Nodo comercial principal.",
+          lat: 3.33837,
+          lng: -76.53512,
+          distance: "2 - 3 km",
+          time: "5 - 8 min",
+          number: 15,
+          displayCategory: "Comercio",
+        },
+        {
+          name: "Mall La Leyenda",
+          category: "Comercio",
+          status: "aproximada",
+          desc: "Zona Ciudad Jardín / sur de Cali.",
+          lat: 3.3652,
+          lng: -76.5362,
+          distance: "2 - 3.5 km",
+          time: "5 - 9 min",
+          number: 16,
+          displayCategory: "Comercio",
+        },
+        {
+          name: "Marbella Plaza",
+          category: "Comercio",
+          status: "aproximada",
+          desc: "Zona Ciudad Jardín / sur de Cali.",
+          lat: 3.368,
+          lng: -76.5333,
+          distance: "2.5 - 4 km",
+          time: "6 - 10 min",
+          number: 17,
+          displayCategory: "Comercio",
+        },
+        {
+          name: "Lago Verde - Parque Comercial Pance",
+          category: "Comercio",
+          status: "aproximada",
+          desc: "Nodo comercial en Pance.",
+          lat: 3.3408,
+          lng: -76.531,
+          distance: "2 - 3.5 km",
+          time: "5 - 9 min",
+          number: 18,
+          displayCategory: "Comercio",
+        },
+        {
+          name: "Centro Comercial Pance 122",
+          category: "Comercio",
+          status: "aproximada",
+          desc: "Sector Carrera 122 / Pance.",
+          lat: 3.3376,
+          lng: -76.5302,
+          distance: "2 - 3 km",
+          time: "5 - 8 min",
+          number: 19,
+          displayCategory: "Comercio",
+        },
+        {
+          name: "Alto Pance Mall",
+          category: "Comercio",
+          status: "aproximada",
+          desc: "Sector Pance.",
+          lat: 3.3419,
+          lng: -76.5323,
+          distance: "2.5 - 4 km",
+          time: "6 - 10 min",
+          number: 20,
+          displayCategory: "Comercio",
+        },
+        {
+          name: "Mall La María",
+          category: "Comercio",
+          status: "verificada",
+          desc: "Referencia usada por Café Valparaíso.",
+          lat: 3.3386579,
+          lng: -76.5258248,
+          distance: "1 - 2 km",
+          time: "3 - 6 min",
+          number: 21,
+          displayCategory: "Comercio",
+        },
+        {
+          name: "Centro Comercial Jardín Plaza",
+          category: "Comercio",
+          status: "verificada",
+          desc: "Centro comercial de gran escala al sur de Cali.",
+          lat: 3.3691967,
+          lng: -76.5275155,
+          distance: "6 - 8 km",
+          time: "12 - 18 min",
+          number: 22,
+          displayCategory: "Comercio",
+        },
+        {
+          name: "Hyper Indoor Pádel Club",
+          category: "Deporte",
+          status: "aproximada",
+          desc: "Sector Pance.",
+          lat: 3.3398,
+          lng: -76.5336,
+          distance: "2 - 3.5 km",
+          time: "5 - 9 min",
+          number: 23,
+          displayCategory: "Deporte / bienestar",
+        },
+        {
+          name: "Club Deportivo Cali - Sede Pance",
+          category: "Deporte",
+          status: "aproximada",
+          desc: "Sede deportiva en Pance.",
+          lat: 3.3338,
+          lng: -76.5358,
+          distance: "3 - 5 km",
+          time: "7 - 12 min",
+          number: 24,
+          displayCategory: "Deporte / bienestar",
+        },
+        {
+          name: "Club Campestre Farallones",
+          category: "Deporte",
+          status: "verificada",
+          desc: "Club campestre cercano a Club Shalom.",
+          lat: 3.3309729,
+          lng: -76.5432985,
+          distance: "4 - 6 km",
+          time: "9 - 15 min",
+          number: 25,
+          displayCategory: "Deporte / bienestar",
+        },
+        {
+          name: "Smart Fit Cañasgordas / Pance",
+          category: "Deporte",
+          status: "aproximada",
+          desc: "Zona Cañasgordas / Ciudad Jardín.",
+          lat: 3.3655,
+          lng: -76.5319,
+          distance: "4 - 6 km",
+          time: "9 - 15 min",
+          number: 26,
+          displayCategory: "Deporte / bienestar",
+        },
+        {
+          name: "Bodytech Jardín Plaza",
+          category: "Deporte",
+          status: "aproximada",
+          desc: "Asociado a Jardín Plaza.",
+          lat: 3.3691,
+          lng: -76.528,
+          distance: "6 - 8 km",
+          time: "12 - 18 min",
+          number: 27,
+          displayCategory: "Deporte / bienestar",
+        },
+        {
+          name: "The ONE Wellness Club",
+          category: "Deporte",
+          status: "aproximada",
+          desc: "Asociado a Lago Verde / Pance.",
+          lat: 3.3409,
+          lng: -76.5311,
+          distance: "2 - 3.5 km",
+          time: "5 - 9 min",
+          number: 28,
+          displayCategory: "Deporte / bienestar",
+        },
+        {
+          name: "Ecoparque Río Pance",
+          category: "Naturaleza",
+          status: "aproximada",
+          desc: "Sector Río Pance / Parque de la Salud.",
+          lat: 3.3481,
+          lng: -76.5687,
+          distance: "5 - 7 km",
+          time: "12 - 18 min",
+          number: 29,
+          displayCategory: "Naturaleza",
+        },
+        {
+          name: "Parque Nacional Natural Farallones de Cali",
+          category: "Naturaleza",
+          status: "aproximada",
+          desc: "Referencia amplia del parque natural; no representa una única entrada.",
+          lat: 3.337,
+          lng: -76.641,
+          distance: "8 - 12 km",
+          time: "18 - 30 min",
+          number: 30,
+          displayCategory: "Naturaleza",
+        },
+        {
+          name: "Centro Recreativo Los Arrayanes",
+          category: "Naturaleza",
+          status: "aproximada",
+          desc: "Sector vía al Río Pance.",
+          lat: 3.3502,
+          lng: -76.5748,
+          distance: "5 - 8 km",
+          time: "12 - 20 min",
+          number: 31,
+          displayCategory: "Naturaleza",
+        },
+        {
+          name: "Río Pance",
+          category: "Naturaleza",
+          status: "aproximada",
+          desc: "Referencia lineal del río, marcada sobre el corredor turístico.",
+          lat: 3.3455,
+          lng: -76.559,
+          distance: "4 - 6 km",
+          time: "10 - 15 min",
+          number: 32,
+          displayCategory: "Naturaleza",
+        },
+        {
+          name: "Eco Parque Lago de las Garzas",
+          category: "Naturaleza",
+          status: "verificada",
+          desc: "Parque natural cercano a Pance.",
+          lat: 3.3318694,
+          lng: -76.5371268,
+          distance: "4 - 6 km",
+          time: "9 - 15 min",
+          number: 33,
+          displayCategory: "Naturaleza",
+        },
+        {
+          name: "Parque de la Salud Pance",
+          category: "Naturaleza",
+          status: "verificada",
+          desc: "Espacio natural y recreativo junto al Río Pance.",
+          lat: 3.3480708,
+          lng: -76.5686747,
+          distance: "5 - 7 km",
+          time: "12 - 18 min",
+          number: 34,
+          displayCategory: "Naturaleza",
+        },
+        {
+          name: "60° Winehouse Club",
+          category: "Gastrobares",
+          status: "aproximada",
+          desc: "Nodo Puerto 125 / Pance.",
+          lat: 3.33855,
+          lng: -76.5357,
+          distance: "2 - 3.5 km",
+          time: "5 - 9 min",
+          number: 35,
+          displayCategory: "Bares / gastrobares",
+        },
+        {
+          name: "Musa Platanera",
+          category: "Gastrobares",
+          status: "aproximada",
+          desc: "Nodo Puerto 125 / Pance.",
+          lat: 3.3387,
+          lng: -76.5353,
+          distance: "2 - 3.5 km",
+          time: "5 - 9 min",
+          number: 36,
+          displayCategory: "Bares / gastrobares",
+        },
+        {
+          name: "Caruzo Rooftop",
+          category: "Gastrobares",
+          status: "aproximada",
+          desc: "Nodo Puerto 125 / Pance.",
+          lat: 3.3382,
+          lng: -76.5347,
+          distance: "2 - 4 km",
+          time: "6 - 10 min",
+          number: 37,
+          displayCategory: "Bares / gastrobares",
+        },
+        {
+          name: "Terra Adventure & Lounge",
+          category: "Gastrobares",
+          status: "aproximada",
+          desc: "Sector Pance.",
+          lat: 3.339,
+          lng: -76.5349,
+          distance: "2.5 - 4.5 km",
+          time: "6 - 12 min",
+          number: 38,
+          displayCategory: "Bares / gastrobares",
+        },
+        {
+          name: "Colegio Colombo Británico",
+          category: "Educación",
+          status: "aproximada",
+          desc: "Zona sur de Cali / Pance-Cañasgordas.",
+          lat: 3.367,
+          lng: -76.537,
+          distance: "3 - 5 km",
+          time: "7 - 12 min",
+          number: 39,
+          displayCategory: "Educación",
+        },
+        {
+          name: "Aspaen Juanambú",
+          category: "Educación",
+          status: "aproximada",
+          desc: "Zona sur de Cali.",
+          lat: 3.3575,
+          lng: -76.5355,
+          distance: "3 - 5 km",
+          time: "7 - 12 min",
+          number: 40,
+          displayCategory: "Educación",
+        },
+        {
+          name: "Colegio Infantil Belén",
+          category: "Educación",
+          status: "aproximada",
+          desc: "Zona sur de Cali.",
+          lat: 3.3605,
+          lng: -76.5336,
+          distance: "3 - 5 km",
+          time: "7 - 12 min",
+          number: 41,
+          displayCategory: "Educación",
+        },
+        {
+          name: "Fundación Valle del Lili",
+          category: "Salud",
+          status: "aproximada",
+          desc: "Cra. 98 #18-49, sur de Cali.",
+          lat: 3.37276115,
+          lng: -76.5267,
+          distance: "6 - 8 km",
+          time: "12 - 18 min",
+          number: 42,
+          displayCategory: "Salud",
+        },
+        {
+          name: "Clínica Imbanaco - Ciudad Jardín",
+          category: "Salud",
+          status: "verificada",
+          desc: "Sede Ciudad Jardín.",
+          lat: 3.3654028,
+          lng: -76.5325411,
+          distance: "6 - 8 km",
+          time: "10 - 15 min",
+          number: 43,
+          displayCategory: "Salud",
+        },
+        {
+          name: "Clínica Nuestra Señora de los Remedios",
+          category: "Salud",
+          status: "aproximada",
+          desc: "Sede norte de Cali; validar tiempos antes de publicar.",
+          lat: 3.464,
+          lng: -76.528,
+          distance: "12 - 18 km",
+          time: "25 - 40 min",
+          number: 44,
+          displayCategory: "Salud",
+        },
+        {
+          name: "MG Medical Group",
+          category: "Salud",
+          status: "aproximada",
+          desc: "Cl. 4 #123-149, Barrio Pance.",
+          lat: 3.3358,
+          lng: -76.5455,
+          distance: "1 - 2 km",
+          time: "3 - 6 min",
+          number: 45,
+          displayCategory: "Salud",
+        },
+      ];
+
+      const defaultPinCoords = Object.fromEntries(
+        points
+          .filter((p) => p.category !== "Referencia")
+          .map((p) => [p.name, [Number(p.lat), Number(p.lng)]]),
+      );
+
+      function clonePinCoordsObject(obj) {
+        const out = {};
+        if (!obj || typeof obj !== "object") return out;
+        Object.entries(obj).forEach(([name, coords]) => {
+          if (
+            Array.isArray(coords) &&
+            coords.length >= 2 &&
+            !Number.isNaN(Number(coords[0])) &&
+            !Number.isNaN(Number(coords[1]))
+          ) {
+            out[name] = [Number(coords[0]), Number(coords[1])];
+          }
+        });
+        return out;
+      }
+
+      // Aplica coordenadas guardadas de pines, si ya fueron ajustadas en este navegador.
+      editorSettings.pinCoords = clonePinCoordsObject(editorSettings.pinCoords);
+      points.forEach((p) => {
+        const savedCoord = editorSettings.pinCoords[p.name];
+        if (p.category !== "Referencia" && savedCoord) {
+          p.lat = savedCoord[0];
+          p.lng = savedCoord[1];
+        }
+      });
+
+      const colors = {
+        Restaurantes: "#f58220",
+        Comercio: "#2f80ed",
+        "Deporte / bienestar": "#67a844",
+        Naturaleza: "#17a7a7",
+        "Bares / gastrobares": "#8a4cc2",
+        Educación: "#d8a91a",
+        Salud: "#d64545",
+      };
+      const classMap = {
+        Restaurantes: "Restaurantes",
+        Comercio: "Comercio",
+        "Deporte / bienestar": "Deporte",
+        Naturaleza: "Naturaleza",
+        "Bares / gastrobares": "Gastrobares",
+        Educación: "Educacion",
+        Salud: "Salud",
+      };
+      const activeCats = new Set(Object.keys(colors));
+      const markerByName = new Map();
+      const pointByName = new Map(points.map((p) => [p.name, p]));
+      let currentEditablePinName = null;
+      const layerByCat = new Map();
+
+      const map = L.map("map", {
+        zoomControl: true,
+        preferCanvas: false,
+      }).setView([3.3415, -76.542], 13);
+      const imagery = L.tileLayer(
+        "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+        {
+          attribution:
+            "Tiles © Esri — Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community",
+          maxZoom: 19,
+        },
+      ).addTo(map);
+      const carto = L.tileLayer(
+        "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
+        {
+          attribution: "&copy; OpenStreetMap contributors &copy; CARTO",
+          subdomains: "abcd",
+          maxZoom: 20,
+        },
+      );
+      L.control
+        .layers({ Satélite: imagery, "Mapa claro": carto }, null, {
+          collapsed: true,
+        })
+        .addTo(map);
+      L.control.scale({ imperial: false }).addTo(map);
+
+      // Control de medición: conserva la función para calcular distancias y áreas sobre el mapa.
+      const measureControl = new L.Control.Measure({
+        position: "topleft",
+        primaryLengthUnit: "meters",
+        secondaryLengthUnit: "kilometers",
+        primaryAreaUnit: "sqmeters",
+        secondaryAreaUnit: "hectares",
+        activeColor: "#314437",
+        completedColor: "#9a7a15",
+      });
+      measureControl.addTo(map);
+
+      // Compatibilidad del plugin Leaflet Measure con Leaflet 1.9+.
+      if (L.Control.Measure) {
+        L.Control.Measure.include({
+          _setCaptureMarkerIcon: function () {
+            if (!this._captureMarker || !this._map) return;
+            this._captureMarker.options.autoPanOnFocus = false;
+            this._captureMarker.setIcon(
+              L.divIcon({ iconSize: this._map.getSize().multiplyBy(2) }),
+            );
+          },
+        });
+      }
+
+      function safeCat(cat) {
+        return classMap[cat] || "Comercio";
+      }
+      function popupHtml(p) {
+        const c = p.displayCategory;
+        const color = colors[c] || "#666";
+        const statusColor = p.status === "verificada" ? "#0a7d27" : "#b26a00";
+        if (p.category === "Referencia") {
+          return `<div class="popup"><h3>${p.name}</h3><div style="text-align:center;margin:6px 0 10px"><img src="${projectLogo}" style="max-width:145px;max-height:78px;object-fit:contain"></div><div class="popup-row"><b>Ubicación:</b><span>Av. La María / Calle 5A #125-84</span></div><div class="popup-row"><b>Referencia:</b><span>Proyecto base</span></div><small>Punto de partida para las distancias y tiempos del mapa.</small></div>`;
+        }
+        return `<div class="popup"><h3>${p.name}</h3><span class="badge" style="background:${color}">${c}</span><div class="popup-row"><b>Distancia aprox.</b><span>${p.distance}</span></div><div class="popup-row"><b>Tiempo aprox.</b><span>${p.time}</span></div><div class="popup-row"><b>Estado</b><span style="color:${statusColor};font-weight:700">${p.status || "aproximada"}</span></div><div class="popup-row"><b>Referencia</b><span>${p.desc || "Validar ubicación final"}</span></div><small>Tiempo estimado en carro particular, sujeto a tráfico y ruta.</small></div>`;
+      }
+      function makeMarker(p) {
+        if (p.category === "Referencia") {
+          return L.marker([p.lat, p.lng], {
+            icon: buildProjectIcon(),
+            draggable: false,
+            autoPan: true,
+          }).bindPopup(popupHtml(p));
+        }
+        const icon = L.divIcon({
+          className: "",
+          html: `<div class="custom-marker cat-${safeCat(p.displayCategory)}"><span>${p.number}</span></div>`,
+          iconSize: [30, 30],
+          iconAnchor: [15, 30],
+          popupAnchor: [0, -28],
+        });
+        return L.marker([p.lat, p.lng], {
+          icon,
+          draggable: false,
+          autoPan: true,
+        })
+          .bindTooltip(`${p.name}<br>${p.distance} · ${p.time}`, {
+            direction: "top",
+            offset: [0, -24],
+            opacity: 0.94,
+          })
+          .bindPopup(popupHtml(p));
+      }
+
+      // Delimitación aproximada del lote del proyecto.
+      // Ajusta estas coordenadas cuando tengas el KML/KMZ/GeoJSON definitivo.
+      const defaultLoteCoords = [
+        [3.3388, -76.5498],
+        [3.33825, -76.5469],
+        [3.33695, -76.54595],
+        [3.33545, -76.54605],
+        [3.3342, -76.54685],
+        [3.33275, -76.5467],
+        [3.33175, -76.54765],
+        [3.33115, -76.54915],
+        [3.3322, -76.55065],
+        [3.33385, -76.55095],
+        [3.33575, -76.5505],
+        [3.33735, -76.55035],
+      ];
+      const cloneCoords = (coords) =>
+        coords.map(([lat, lng]) => [Number(lat), Number(lng)]);
+      let loteCoords =
+        Array.isArray(editorSettings.loteCoords) &&
+        editorSettings.loteCoords.length >= 3
+          ? cloneCoords(editorSettings.loteCoords)
+          : cloneCoords(defaultLoteCoords);
+
+      const lotePolygon = L.polygon(loteCoords, {
+        color: editorSettings.lotColor,
+        weight: editorSettings.lotWeight,
+        opacity: 1,
+        fillColor: editorSettings.lotColor,
+        fillOpacity: Number(editorSettings.lotOpacity) / 100,
+        interactive: true,
+      }).addTo(map);
+
+      lotePolygon.bindTooltip("Proyecto / Club Shalom", {
+        permanent: true,
+        direction: "center",
+        className: "project-lot-label",
+      });
+
+      lotePolygon.bindPopup(`
+  <div class="popup">
+    <h3>Proyecto / Club Shalom</h3>
+    <div style="text-align:center;margin:6px 0 10px">
+      <img src="${projectLogo}" style="max-width:135px;max-height:72px;object-fit:contain">
+    </div>
+    <div class="popup-row"><b>Área:</b><span>Lote del proyecto</span></div>
+    <div class="popup-row"><b>Ubicación:</b><span>Pance / Av. La María</span></div>
+    <small>Contorno aproximado de referencia. Reemplazar por coordenadas oficiales al cierre.</small>
+  </div>
+`);
+
+      const editableLayers = new L.FeatureGroup().addTo(map);
+      editableLayers.addLayer(lotePolygon);
+      const drawControl = new L.Control.Draw({
+        draw: false,
+        edit: {
+          featureGroup: editableLayers,
+          remove: false,
+        },
+      });
+      map.addControl(drawControl);
+
+      function getCurrentLotCoords() {
+        return lotePolygon
+          .getLatLngs()[0]
+          .map((ll) => [Number(ll.lat.toFixed(7)), Number(ll.lng.toFixed(7))]);
+      }
+      function applyLotStyle() {
+        lotePolygon.setStyle({
+          color: editorSettings.lotColor,
+          fillColor: editorSettings.lotColor,
+          weight: Number(editorSettings.lotWeight),
+          fillOpacity: Number(editorSettings.lotOpacity) / 100,
+        });
+        lotePolygon.bringToFront();
+      }
+      function lotCoordsSnippet() {
+        const coords = getCurrentLotCoords();
+        const exportSettings = {
+          logoCardSize: Number(editorSettings.logoCardSize),
+          logoImageSize: Number(editorSettings.logoImageSize),
+          logoTextSize: Number(editorSettings.logoTextSize),
+          showProjectName: !!editorSettings.showProjectName,
+          lotColor: editorSettings.lotColor,
+          lotWeight: Number(editorSettings.lotWeight),
+          lotOpacity: Number(editorSettings.lotOpacity),
+        };
+        return `const projectLogoSettings = ${JSON.stringify(exportSettings, null, 2)};
+
+const loteCoords = ${JSON.stringify(coords, null, 2)};`;
+      }
+      function updateCoordsOutput(extraMessage = "") {
+        const out = document.getElementById("coordsOutput");
+        if (out) out.value = lotCoordsSnippet();
+        if (extraMessage) {
+          const status = document.getElementById("editStatus");
+          if (status) status.textContent = extraMessage;
+        }
+      }
+      function saveEditorSettings() {
+        editorSettings.loteCoords = getCurrentLotCoords();
+        editorSettings.pinCoords = getCurrentPinCoords();
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(editorSettings));
+        updateCoordsOutput(
+          "Ajustes guardados en este navegador. Para llevarlos al manager, copia las coordenadas y reemplaza el bloque loteCoords del HTML.",
+        );
+        updatePinsOutput(
+          "Ajustes de pines guardados en este navegador. Copia el bloque pinCoords para llevarlos al HTML definitivo.",
+        );
+      }
+      function resetLot() {
+        lotePolygon.setLatLngs(cloneCoords(defaultLoteCoords));
+        editorSettings.loteCoords = null;
+        applyLotStyle();
+        updateCoordsOutput("Contorno restaurado a la versión base.");
+      }
+      function enableLotEditing() {
+        if (lotePolygon.editing && lotePolygon.editing.enable) {
+          lotePolygon.editing.enable();
+          document.getElementById("editLotBtn").disabled = true;
+          document.getElementById("finishEditBtn").disabled = false;
+          updateCoordsOutput(
+            "Edición activa: arrastra los vértices del lote hasta ajustar el contorno.",
+          );
+        } else {
+          updateCoordsOutput(
+            "No se pudo activar la edición directa. Usa el ícono de lápiz de la barra Leaflet Draw.",
+          );
+        }
+      }
+      function disableLotEditing() {
+        if (lotePolygon.editing && lotePolygon.editing.disable)
+          lotePolygon.editing.disable();
+        document.getElementById("editLotBtn").disabled = false;
+        document.getElementById("finishEditBtn").disabled = true;
+        editorSettings.loteCoords = getCurrentLotCoords();
+        updateCoordsOutput(
+          "Edición finalizada. Puedes guardar ajustes o copiar coordenadas.",
+        );
+      }
+      function copyLotCoords() {
+        const text = lotCoordsSnippet();
+        updateCoordsOutput("Coordenadas listas para copiar.");
+        const out = document.getElementById("coordsOutput");
+        if (out) {
+          out.value = text;
+          out.focus();
+          out.select();
+        }
+        if (navigator.clipboard && window.isSecureContext) {
+          navigator.clipboard
+            .writeText(text)
+            .then(() =>
+              updateCoordsOutput("Coordenadas copiadas al portapapeles."),
+            )
+            .catch(() => document.execCommand && document.execCommand("copy"));
+        } else if (document.execCommand) {
+          document.execCommand("copy");
+        }
+      }
+
+      window.setInterval(() => {
+        if (
+          lotePolygon.editing &&
+          lotePolygon.editing.enabled &&
+          lotePolygon.editing.enabled()
+        )
+          updateCoordsOutput();
+      }, 700);
+
+      map.on(L.Draw.Event.EDITED, function () {
+        editorSettings.loteCoords = getCurrentLotCoords();
+        updateCoordsOutput(
+          "Polígono actualizado desde la herramienta de edición de Leaflet.",
+        );
+      });
+      map.on(L.Draw.Event.EDITSTART, function () {
+        updateCoordsOutput("Edición activa desde la barra Leaflet Draw.");
+      });
+      map.on(L.Draw.Event.EDITSTOP, function () {
+        updateCoordsOutput(
+          "Edición detenida. Revisa y guarda las coordenadas si quedaron correctas.",
+        );
+      });
+
+      window.__lotReady = true;
+      applyLotStyle();
+      lotePolygon.bringToFront();
+      updateCoordsOutput();
+
+      // Capa del proyecto
+      const project = points.find((p) => p.category === "Referencia");
+      if (project) {
+        projectMarker = makeMarker(project).addTo(map);
+      }
+
+      Object.keys(colors).forEach((cat) => {
+        const cluster = L.markerClusterGroup({
+          showCoverageOnHover: false,
+          maxClusterRadius: 42,
+        });
+        layerByCat.set(cat, cluster);
+        map.addLayer(cluster);
+      });
+
+      points
+        .filter((p) => p.category !== "Referencia")
+        .forEach((p) => {
+          const marker = makeMarker(p);
+          markerByName.set(p.name, marker);
+          const layer = layerByCat.get(p.displayCategory);
+          if (layer) layer.addLayer(marker);
+        });
+
+      const bounds = L.latLngBounds(
+        points.map((p) => [p.lat, p.lng]).concat(loteCoords),
+      );
+      map.fitBounds(bounds, { padding: [38, 410] });
+
+      function refreshLayers() {
+        for (const [cat, layer] of layerByCat) {
+          if (activeCats.has(cat)) {
+            if (!map.hasLayer(layer)) map.addLayer(layer);
+          } else {
+            if (map.hasLayer(layer)) map.removeLayer(layer);
+          }
+        }
+        renderList();
+      }
+
+      function renderFilters() {
+        const filters = document.getElementById("filters");
+        filters.innerHTML = Object.entries(colors)
+          .map(
+            ([cat, color]) => `
+    <label class="filter"><input type="checkbox" checked data-cat="${cat}"><span class="dot" style="background:${color}"></span>${cat}</label>
+  `,
+          )
+          .join("");
+        filters.querySelectorAll("input").forEach((input) => {
+          input.addEventListener("change", (e) => {
+            const cat = e.target.dataset.cat;
+            if (e.target.checked) activeCats.add(cat);
+            else activeCats.delete(cat);
+            refreshLayers();
+          });
+        });
+      }
+
+      function renderList() {
+        const list = document.getElementById("poiList");
+        const filtered = points.filter(
+          (p) =>
+            p.category !== "Referencia" && activeCats.has(p.displayCategory),
+        );
+        list.innerHTML = filtered
+          .map(
+            (p) => `
+    <div class="poi-item" data-name="${p.name.replace(/"/g, "&quot;")}">
+      <strong><span style="color:${colors[p.displayCategory]}">${p.number}.</span> ${p.name}</strong>
+      <div class="poi-meta">${p.displayCategory} · ${p.distance} · ${p.time}</div>
+    </div>
+  `,
+          )
+          .join("");
+        list.querySelectorAll(".poi-item").forEach((el) => {
+          el.addEventListener("click", () => {
+            const marker = markerByName.get(el.dataset.name);
+            if (marker) {
+              const ll = marker.getLatLng();
+              map.setView(ll, 16);
+              marker.openPopup();
+            }
+          });
+        });
+      }
+
+      function getCurrentPinCoords() {
+        const coords = {};
+        points
+          .filter((p) => p.category !== "Referencia")
+          .forEach((p) => {
+            const marker = markerByName.get(p.name);
+            const ll = marker ? marker.getLatLng() : L.latLng(p.lat, p.lng);
+            coords[p.name] = [
+              Number(ll.lat.toFixed(7)),
+              Number(ll.lng.toFixed(7)),
+            ];
+          });
+        return coords;
+      }
+      function getChangedPinCoords() {
+        const current = getCurrentPinCoords();
+        const changed = {};
+        Object.entries(current).forEach(([name, coords]) => {
+          const base = defaultPinCoords[name];
+          if (
+            !base ||
+            Math.abs(coords[0] - base[0]) > 0.0000001 ||
+            Math.abs(coords[1] - base[1]) > 0.0000001
+          ) {
+            changed[name] = coords;
+          }
+        });
+        return changed;
+      }
+      function pinCoordsSnippet() {
+        const current = getCurrentPinCoords();
+        const changed = getChangedPinCoords();
+        return `// Coordenadas actuales de todos los pines de sitios.
+const pinCoords = ${JSON.stringify(current, null, 2)};
+
+// Solo pines modificados respecto a la base inicial.
+const pinCoordsModificados = ${JSON.stringify(changed, null, 2)};`;
+      }
+      function updatePinsOutput(extraMessage = "") {
+        const out = document.getElementById("pinsOutput");
+        if (out) out.value = pinCoordsSnippet();
+        if (extraMessage) {
+          const status = document.getElementById("pinStatus");
+          if (status) status.textContent = extraMessage;
+        }
+      }
+      function populatePinSelect() {
+        const select = document.getElementById("pinSelect");
+        if (!select) return;
+        const grouped = Object.keys(colors)
+          .map((cat) => {
+            const opts = points
+              .filter(
+                (p) => p.category !== "Referencia" && p.displayCategory === cat,
+              )
+              .map(
+                (p) =>
+                  `<option value="${p.name.replace(/"/g, "&quot;")}">${p.number}. ${p.name}</option>`,
+              )
+              .join("");
+            return opts ? `<optgroup label="${cat}">${opts}</optgroup>` : "";
+          })
+          .join("");
+        select.innerHTML = grouped;
+      }
+      function getSelectedPinName() {
+        const select = document.getElementById("pinSelect");
+        return select ? select.value : null;
+      }
+      function syncPinPointFromMarker(name) {
+        const marker = markerByName.get(name);
+        const p = pointByName.get(name);
+        if (!marker || !p) return null;
+        const ll = marker.getLatLng();
+        p.lat = ll.lat;
+        p.lng = ll.lng;
+        return ll;
+      }
+      function ensurePinCategoryVisible(p) {
+        if (!p || !p.displayCategory) return;
+        if (!activeCats.has(p.displayCategory))
+          activeCats.add(p.displayCategory);
+        document
+          .querySelectorAll("#filters input[data-cat]")
+          .forEach((input) => {
+            if (input.dataset.cat === p.displayCategory) input.checked = true;
+          });
+        refreshLayers();
+      }
+      function zoomToPin(name, afterZoom) {
+        const marker = markerByName.get(name);
+        const p = pointByName.get(name);
+        if (!marker || !p) return;
+        ensurePinCategoryVisible(p);
+        const layer = layerByCat.get(p.displayCategory);
+        const run = () => {
+          map.setView(marker.getLatLng(), Math.max(map.getZoom(), 17));
+          marker.openPopup();
+          if (typeof afterZoom === "function") afterZoom(marker, p);
+        };
+        if (layer && typeof layer.zoomToShowLayer === "function") {
+          layer.zoomToShowLayer(marker, run);
+        } else {
+          run();
+        }
+      }
+      function focusSelectedPin() {
+        const name = getSelectedPinName();
+        if (!name) return;
+        zoomToPin(name, () => updatePinsOutput(`Pin seleccionado: ${name}.`));
+      }
+      function onPinDragEnd(e) {
+        const marker = e.target;
+        const name = currentEditablePinName;
+        if (!name) return;
+        const p = pointByName.get(name);
+        const ll = marker.getLatLng();
+        if (p) {
+          p.lat = ll.lat;
+          p.lng = ll.lng;
+        }
+        editorSettings.pinCoords = getCurrentPinCoords();
+        const layer = p ? layerByCat.get(p.displayCategory) : null;
+        if (layer && typeof layer.refreshClusters === "function")
+          layer.refreshClusters(marker);
+        updatePinsOutput(
+          `Posición actualizada para “${name}”: ${ll.lat.toFixed(7)}, ${ll.lng.toFixed(7)}.`,
+        );
+      }
+      function enablePinEditing() {
+        const name = getSelectedPinName();
+        if (!name) return;
+        if (currentEditablePinName && currentEditablePinName !== name)
+          disablePinEditing(false);
+        const marker = markerByName.get(name);
+        if (!marker) return;
+        currentEditablePinName = name;
+        zoomToPin(name, () => {
+          if (marker.dragging && marker.dragging.enable) {
+            marker.off("dragend", onPinDragEnd);
+            marker.on("dragend", onPinDragEnd);
+            marker.dragging.enable();
+            document.getElementById("editPinBtn").disabled = true;
+            document.getElementById("finishPinEditBtn").disabled = false;
+            updatePinsOutput(
+              `Edición activa para “${name}”. Arrastra el pin hasta la ubicación correcta y luego presiona “Finalizar”.`,
+            );
+          } else {
+            updatePinsOutput(
+              "No se pudo activar el arrastre del marcador en este navegador.",
+            );
+          }
+        });
+      }
+      function disablePinEditing(updateStatus = true) {
+        if (!currentEditablePinName) return;
+        const name = currentEditablePinName;
+        const marker = markerByName.get(name);
+        if (marker) {
+          syncPinPointFromMarker(name);
+          if (marker.dragging && marker.dragging.disable)
+            marker.dragging.disable();
+          marker.off("dragend", onPinDragEnd);
+        }
+        currentEditablePinName = null;
+        const editBtn = document.getElementById("editPinBtn");
+        const finishBtn = document.getElementById("finishPinEditBtn");
+        if (editBtn) editBtn.disabled = false;
+        if (finishBtn) finishBtn.disabled = true;
+        editorSettings.pinCoords = getCurrentPinCoords();
+        if (updateStatus)
+          updatePinsOutput(
+            `Edición finalizada para “${name}”. Puedes guardar los ajustes o copiar las coordenadas.`,
+          );
+      }
+      function resetSelectedPin() {
+        const name = getSelectedPinName();
+        if (!name || !defaultPinCoords[name]) return;
+        if (currentEditablePinName === name) disablePinEditing(false);
+        const marker = markerByName.get(name);
+        const p = pointByName.get(name);
+        const [lat, lng] = defaultPinCoords[name];
+        if (marker) marker.setLatLng([lat, lng]);
+        if (p) {
+          p.lat = lat;
+          p.lng = lng;
+        }
+        const layer = p ? layerByCat.get(p.displayCategory) : null;
+        if (layer && typeof layer.refreshClusters === "function")
+          layer.refreshClusters(marker);
+        editorSettings.pinCoords = getCurrentPinCoords();
+        zoomToPin(name, () =>
+          updatePinsOutput(`Pin restaurado a su posición inicial: “${name}”.`),
+        );
+      }
+      function resetAllPins() {
+        if (currentEditablePinName) disablePinEditing(false);
+        Object.entries(defaultPinCoords).forEach(([name, coords]) => {
+          const marker = markerByName.get(name);
+          const p = pointByName.get(name);
+          if (marker) marker.setLatLng(coords);
+          if (p) {
+            p.lat = coords[0];
+            p.lng = coords[1];
+          }
+        });
+        layerByCat.forEach((layer) => {
+          if (layer && typeof layer.refreshClusters === "function")
+            layer.refreshClusters();
+        });
+        editorSettings.pinCoords = getCurrentPinCoords();
+        updatePinsOutput(
+          "Todos los pines fueron restaurados a la posición base del HTML.",
+        );
+      }
+      function copyPinCoords() {
+        const text = pinCoordsSnippet();
+        updatePinsOutput("Coordenadas de pines listas para copiar.");
+        const out = document.getElementById("pinsOutput");
+        if (out) {
+          out.value = text;
+          out.focus();
+          out.select();
+        }
+        if (navigator.clipboard && window.isSecureContext) {
+          navigator.clipboard
+            .writeText(text)
+            .then(() =>
+              updatePinsOutput(
+                "Coordenadas de pines copiadas al portapapeles.",
+              ),
+            )
+            .catch(() => document.execCommand && document.execCommand("copy"));
+        } else if (document.execCommand) {
+          document.execCommand("copy");
+        }
+      }
+
+      function initEditorTools() {
+        const $ = (id) => document.getElementById(id);
+        const panel = $("toolPanel");
+        const toggle = $("toggleTools");
+        const logoCard = $("logoCardSize");
+        const logoImage = $("logoImageSize");
+        const logoText = $("logoTextSize");
+        const showName = $("showProjectName");
+        const lotColor = $("lotColor");
+        const lotWeight = $("lotWeight");
+        const lotOpacity = $("lotOpacity");
+        const pinSelect = $("pinSelect");
+
+        function syncValues() {
+          if (logoCard) {
+            logoCard.value = editorSettings.logoCardSize;
+            $("logoCardValue").textContent =
+              `${editorSettings.logoCardSize} px`;
+          }
+          if (logoImage) {
+            logoImage.value = editorSettings.logoImageSize;
+            $("logoImageValue").textContent =
+              `${editorSettings.logoImageSize} px`;
+          }
+          if (logoText) {
+            logoText.value = editorSettings.logoTextSize;
+            $("logoTextValue").textContent =
+              `${editorSettings.logoTextSize} px`;
+          }
+          if (showName) showName.checked = !!editorSettings.showProjectName;
+          if (lotColor) lotColor.value = editorSettings.lotColor;
+          if (lotWeight) {
+            lotWeight.value = editorSettings.lotWeight;
+            $("lotWeightValue").textContent = `${editorSettings.lotWeight} px`;
+          }
+          if (lotOpacity) {
+            lotOpacity.value = editorSettings.lotOpacity;
+            $("lotOpacityValue").textContent = `${editorSettings.lotOpacity}%`;
+          }
+        }
+        syncValues();
+
+        if (toggle)
+          toggle.addEventListener("click", () => {
+            panel.classList.toggle("collapsed");
+            toggle.textContent = panel.classList.contains("collapsed")
+              ? "+"
+              : "−";
+          });
+
+        if (logoCard)
+          logoCard.addEventListener("input", (e) => {
+            editorSettings.logoCardSize = Number(e.target.value);
+            $("logoCardValue").textContent =
+              `${editorSettings.logoCardSize} px`;
+            applyProjectLogoSettings();
+          });
+        if (logoImage)
+          logoImage.addEventListener("input", (e) => {
+            editorSettings.logoImageSize = Number(e.target.value);
+            $("logoImageValue").textContent =
+              `${editorSettings.logoImageSize} px`;
+            applyProjectLogoSettings();
+          });
+        if (logoText)
+          logoText.addEventListener("input", (e) => {
+            editorSettings.logoTextSize = Number(e.target.value);
+            $("logoTextValue").textContent =
+              `${editorSettings.logoTextSize} px`;
+            applyProjectLogoSettings();
+          });
+        if (showName)
+          showName.addEventListener("change", (e) => {
+            editorSettings.showProjectName = e.target.checked;
+            applyProjectLogoSettings();
+          });
+        if (lotColor)
+          lotColor.addEventListener("input", (e) => {
+            editorSettings.lotColor = e.target.value;
+            applyLotStyle();
+          });
+        if (lotWeight)
+          lotWeight.addEventListener("input", (e) => {
+            editorSettings.lotWeight = Number(e.target.value);
+            $("lotWeightValue").textContent = `${editorSettings.lotWeight} px`;
+            applyLotStyle();
+          });
+        if (lotOpacity)
+          lotOpacity.addEventListener("input", (e) => {
+            editorSettings.lotOpacity = Number(e.target.value);
+            $("lotOpacityValue").textContent = `${editorSettings.lotOpacity}%`;
+            applyLotStyle();
+          });
+
+        $("editLotBtn").addEventListener("click", enableLotEditing);
+        $("finishEditBtn").addEventListener("click", disableLotEditing);
+        $("resetLotBtn").addEventListener("click", resetLot);
+        $("copyLotBtn").addEventListener("click", copyLotCoords);
+        $("saveAdjustmentsBtn").addEventListener("click", saveEditorSettings);
+        if (pinSelect)
+          pinSelect.addEventListener("change", () => {
+            if (currentEditablePinName) disablePinEditing(false);
+            updatePinsOutput(`Sitio seleccionado: ${getSelectedPinName()}.`);
+          });
+        $("focusPinBtn").addEventListener("click", focusSelectedPin);
+        $("editPinBtn").addEventListener("click", enablePinEditing);
+        $("finishPinEditBtn").addEventListener("click", disablePinEditing);
+        $("resetPinBtn").addEventListener("click", resetSelectedPin);
+        $("resetAllPinsBtn").addEventListener("click", resetAllPins);
+        $("copyPinsBtn").addEventListener("click", copyPinCoords);
+        populatePinSelect();
+        updatePinsOutput();
+      }
+
+      initEditorTools();
+      renderFilters();
+      renderList();
+    </script>
+  </body>
+</html>
